@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ExpHarness is a learnable experience harness that improves frozen and replaceable LLM executors by learning which past experiences to put in their context, without updating the executor.">
+    <meta name="keywords" content="LLM Agents, Experience Learning, Agent Memory, Harness, Retrieval, Reinforcement Learning, ALFWorld, AppWorld">
+    <title>ExpHarness: Model-Agnostic Experience Learning through a Trainable Harness</title>
+
+    <meta property="og:title" content="ExpHarness: Model-Agnostic Experience Learning through a Trainable Harness">
+    <meta property="og:description" content="A trainable experience harness (self-evolving experience graph + RL-trained retrieval copilot) that improves frozen LLM executors on 10 static benchmarks and 2 agentic environments.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="./static/images/framework.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="icon" href="./static/images/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+    <link rel="stylesheet" href="./static/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <link rel="stylesheet" href="./static/css/index.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="./static/js/index.js"></script>
+
+    <style>
+        .results-table {
+            margin: 0 auto;
+            /* `separate` (not `collapse`) so the label column can be sticky on
+               narrow screens -- Chrome ignores position:sticky on collapsed cells. */
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        /* Bulma ships `table td:not([align])` at specificity (0,1,2), so these
+           need `tr` in the selector to actually win. */
+        .results-table tr th, .results-table tr td {
+            padding: 8px 14px;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #dbdbdb;
+        }
+        .results-table thead th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid #3273dc;
+        }
+        .highlight-box .stat {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3273dc;
+        }
+        .highlight-box .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .highlight-box .stat-desc {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 0.35rem;
+            line-height: 1.4;
+        }
+
+        /* Author list */
+        .author-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.25rem 1rem;
+            margin-top: 0.5rem;
+        }
+        .author-list .author-block { font-size: 1rem; }
+
+        /* Domain coverage cards */
+        .domain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 0.9rem;
+        }
+        .domain-card {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+            text-align: left;
+            transition: transform 0.15s, box-shadow 0.15s;
+            cursor: pointer;
+        }
+        .domain-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+        .domain-card .domain-name {
+            font-weight: 600;
+            color: #363636;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+        .domain-card .domain-count {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #3273dc;
+        }
+        .domain-card .domain-subs {
+            margin-top: 0.4rem;
+            font-size: 0.75rem;
+            color: #999;
+            line-height: 1.5;
+        }
+
+        /* ---------- Sticky section nav ---------- */
+        .section-nav {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: saturate(180%) blur(10px);
+            border-bottom: 1px solid #ececec;
+        }
+        .section-nav .nav-inner {
+            display: flex;
+            justify-content: center;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+            padding: 0.5rem 1rem;
+        }
+        .section-nav a {
+            flex: 0 0 auto;
+            white-space: nowrap;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #888;
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .section-nav a:hover { background: #f0f4fa; color: #3273dc; }
+
+        html { scroll-behavior: smooth; }
+        section[id] { scroll-margin-top: 3.5rem; }
+
+        /* ---------- Hero headline stats ---------- */
+        /* Four tiles laid out on a 6-column track: the two rating/audit tiles
+           are twice as wide because they carry a second line of detail. */
+        .stat-ribbon {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.75rem;
+            margin: 1.75rem auto 0;
+            max-width: 940px;
+        }
+        .stat-ribbon .stat-cell {
+            display: flex;
+            flex-direction: column;
+            /* Top-aligned so the big numbers line up across tiles of unequal
+               content height. */
+            justify-content: flex-start;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 0.85rem 0.6rem;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .stat-ribbon .stat-cell.is-wide { grid-column: span 2; }
+        .stat-ribbon .stat-cell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+        }
+        .stat-ribbon .stat-num {
+            font-size: 1.7rem;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #3273dc;
+        }
+        .stat-ribbon .stat-den {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #9db6e2;
+        }
+        .stat-ribbon .stat-cap {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #999;
+            margin-top: 0.3rem;
+        }
+        .stat-ribbon .stat-foot {
+            font-size: 0.68rem;
+            line-height: 1.35;
+            color: #aaa;
+            margin-top: 0.35rem;
+        }
+        /* Two reviewers side by side inside a single tile. */
+        .stat-ribbon .dual-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 0.9rem;
+        }
+        .stat-ribbon .dual-row .dual-item { flex: 1 1 0; }
+        .stat-ribbon .dual-row .dual-item + .dual-item {
+            border-left: 1px solid #ececec;
+            padding-left: 0.9rem;
+        }
+        .stat-ribbon .dual-lbl {
+            font-size: 0.66rem;
+            font-weight: 600;
+            color: #888;
+            line-height: 1.3;
+            margin-top: 0.2rem;
+        }
+        /* Plain-language gloss so the audit means something at first glance. */
+        .stat-legend {
+            max-width: 780px;
+            margin: 0.9rem auto 0;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            color: #7a8794;
+        }
+        .stat-legend .fa-shield-halved { color: #1f9254; margin-right: 0.3rem; }
+        .stat-legend strong { color: #5a6c7d; }
+
+        /* ---------- Section eyebrow label ---------- */
+        .eyebrow {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: #3273dc;
+            margin-bottom: 0.35rem;
+        }
+
+        /* ---------- Figure cards ---------- */
+        .figure-card {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 12px;
+            padding: 1.1rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+        .figure-card img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        .figure-card figcaption {
+            font-size: 0.82rem;
+            color: #777;
+            line-height: 1.55;
+            margin-top: 0.85rem;
+            text-align: left;
+        }
+        .figure-card figcaption strong { color: #555; }
+        .fig-link {
+            font-size: 0.72rem;
+            color: #3273dc;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .fig-link:hover { text-decoration: underline; }
+
+        /* ---------- Demo video ---------- */
+        /* Dark band: the demo sits between two light sections and the captured
+           UI is dark, so this separates it without reflowing the alternating
+           white/#fafafa rhythm of every section below it. */
+        #demo { background: #22303f; }
+        #demo .eyebrow { color: #7fb3f0; }
+        #demo .title { color: #fff; }
+        #demo .content p { color: #c3cedb; }
+        .video-card {
+            background: #1a2632;
+            border-color: #31404f;
+            box-shadow: 0 10px 34px rgba(0, 0, 0, 0.30);
+        }
+        .video-card video {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            background: #000;
+        }
+        .video-card figcaption { color: #93a2b2; }
+        .video-card figcaption strong { color: #d7e0e9; }
+        /* Bulma's default <code> is a light pill, jarring on the dark card. */
+        .video-card figcaption code {
+            background: #2b3a4a;
+            color: #e7b1b8;
+            font-size: 0.92em;
+            padding: 0.05em 0.35em;
+            border-radius: 4px;
+        }
+        .video-card .fig-link { color: #7fb3f0; }
+
+        /* ---------- Pillar cards (system overview) ---------- */
+        .pillar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-top: 1.75rem;
+        }
+        .pillar-card {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-top: 3px solid #3273dc;
+            border-radius: 10px;
+            padding: 1.15rem 1.25rem;
+            text-align: left;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .pillar-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+        }
+        .pillar-card .pillar-icon {
+            color: #3273dc;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .pillar-card .pillar-title {
+            font-weight: 700;
+            color: #363636;
+            font-size: 0.95rem;
+            margin-bottom: 0.4rem;
+        }
+        .pillar-card .pillar-text {
+            font-size: 0.85rem;
+            color: #777;
+            line-height: 1.6;
+        }
+
+        /* ---------- Results tables ---------- */
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 0.25rem;
+        }
+        .results-table {
+            font-size: 0.85rem;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+            white-space: nowrap;
+        }
+        /* Corners are rounded per-cell rather than with `overflow: hidden`,
+           which would cancel the sticky label column. */
+        .results-table thead tr:first-child th:first-child { border-top-left-radius: 10px; }
+        .results-table thead tr:first-child th:last-child { border-top-right-radius: 10px; }
+        .results-table tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+        .results-table tbody tr:last-child td:last-child { border-bottom-right-radius: 10px; }
+        .results-table tbody tr:last-child td { border-bottom: none; }
+        .results-table thead th { color: #555; }
+        .results-table thead th.spans {
+            border-bottom: 1px solid #dbdbdb;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .results-table td.name,
+        .results-table th.name { text-align: left; }
+        /* Thin divider between the two column groups. In both tables the
+           second group starts at column 5. */
+        .results-table tr .group-start,
+        .results-table tbody tr:not(.group-row) td:nth-child(5) {
+            border-left: 1px solid #ececec;
+        }
+        .results-table .group-row td {
+            text-align: left;
+            background: #fbfbfb;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a0a0a0;
+            padding-top: 0.6rem;
+            padding-bottom: 0.6rem;
+        }
+        .results-table .row-ours { background-color: #eef4fd; }
+        .results-table .row-ours td { border-top: 2px solid #3273dc; }
+        .results-table .row-ours td { color: #1c4f9c; font-weight: 700; }
+        .results-table .best { font-weight: 700; }
+        .results-table .sd {
+            color: #a8a8a8;
+            font-size: 0.78em;
+            font-weight: 400;
+        }
+        .results-table .row-ours .sd { color: #6b93d4; }
+        .results-table td.yes, .results-table .row-ours td.yes { color: #1f9254; }
+        .results-table td.no,  .results-table .row-ours td.no  { color: #d64545; }
+        .table-note {
+            font-size: 0.8rem;
+            color: #999;
+            line-height: 1.55;
+            margin-top: 0.9rem;
+            text-align: center;
+        }
+
+        /* ---------- Takeaway callout ---------- */
+        .takeaway {
+            display: flex;
+            gap: 0.85rem;
+            align-items: flex-start;
+            background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+            border-left: 4px solid #3273dc;
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        .takeaway .takeaway-icon { color: #3273dc; margin-top: 0.15rem; }
+        .takeaway p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #4a4a4a;
+            line-height: 1.6;
+        }
+
+        @media screen and (max-width: 768px) {
+            .stat-ribbon .stat-num { font-size: 1.4rem; }
+            /* 6 narrow columns do not fit a phone: 2 up, wide tiles full width. */
+            .stat-ribbon { grid-template-columns: repeat(2, 1fr); }
+            .stat-ribbon .stat-cell.is-wide { grid-column: span 2; }
+
+            /* Keep the sticky nav one line tall: scroll it instead of wrapping. */
+            .section-nav .nav-inner {
+                gap: 0;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                justify-content: flex-start;
+                scrollbar-width: none;
+            }
+            .section-nav .nav-inner::-webkit-scrollbar { display: none; }
+            .section-nav a { font-size: 0.68rem; padding: 0.3rem 0.5rem; }
+
+            /* Pin the row-label column while the rest of the table scrolls. */
+            .results-table .name {
+                position: sticky;
+                left: 0;
+                z-index: 1;
+                background: #fff;
+                border-right: 1px solid #ececec;
+            }
+            .results-table thead .name { background: #f5f5f5; }
+            .results-table .row-ours .name { background: #eef4fd; }
+        }
+        /* ---------- ExpHarness additions ---------- */
+        .gallery-tabs { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin: 1.25rem 0 1rem; }
+        .gallery-tab {
+            padding: 0.5rem 1.1rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; border: none;
+            transition: all 0.2s; white-space: nowrap; font-family: inherit;
+        }
+        .gallery-tab.active { background-color: #3273dc; color: #fff; box-shadow: 0 4px 12px rgba(50, 115, 220, 0.3); }
+        .gallery-tab:not(.active) { background-color: #f1f1f1; color: #888; }
+        .gallery-tab:not(.active):hover { background-color: #e2e6ea; color: #555; }
+        .results-table.static { font-size: 0.78rem; }
+        .results-table.static tr th, .results-table.static tr td { padding: 7px 8px; }
+        .results-table .second { text-decoration: underline; text-underline-offset: 3px; }
+        .results-table tr.row-ours td.second { text-decoration: none; }
+        /* column-group dividers for our tables (override the template's 5th-column rule) */
+        .results-table.static tbody tr:not(.group-row) td:nth-child(5),
+        .results-table.agentic tbody tr:not(.group-row) td:nth-child(5) { border-left: none; }
+        .results-table.static tbody tr:not(.group-row) td:nth-child(7),
+        .results-table.static tbody tr:not(.group-row) td:nth-child(10),
+        .results-table.static tbody tr:not(.group-row) td:nth-child(12),
+        .results-table.agentic tbody tr:not(.group-row) td:nth-child(6),
+        .results-table.agentic tbody tr:not(.group-row) td:nth-child(10) { border-left: 1px solid #ececec; }
+        .equation {
+            background: #fff; border: 1px solid #ececec; border-radius: 10px; padding: 0.9rem 1rem;
+            text-align: center; font-family: 'Castoro', serif; font-size: 1.25rem; color: #363636; margin: 1.25rem auto 0;
+            max-width: 560px;
+        }
+        .equation .eq-note { display: block; font-family: 'Google Sans', sans-serif; font-size: 0.75rem; color: #999; margin-top: 0.35rem; }
+        .step-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+        .step-card { background: #fff; border: 1px solid #ececec; border-radius: 10px; padding: 1rem 1.15rem; text-align: left; }
+        .step-card .step-tag { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #3273dc; }
+        .step-card .step-title { font-weight: 700; color: #363636; margin: 0.2rem 0 0.35rem; }
+        .step-card .step-text { font-size: 0.84rem; color: #777; line-height: 1.6; }
+        .radar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; }
+        .radar-grid figure { margin: 0; }
+        .radar-grid .sub-cap { text-align: center; font-size: 0.8rem; color: #666; margin-top: 0.4rem; }
+        #code { background: #22303f; }
+        #code .eyebrow { color: #7fb3f0; }
+        #code .title { color: #fff; }
+        #code .content p, #code .content li { color: #c3cedb; }
+        #code .content strong { color: #e6edf5; }
+        #code .content code { background: #2b3a4a; color: #e7b1b8; }
+        .code-card { background: #1a2632; border: 1px solid #31404f; border-radius: 12px; padding: 1rem 1.2rem; overflow-x: auto; }
+        .code-card pre { background: transparent; color: #dce6f0; padding: 0; margin: 0; font-size: 0.8rem; line-height: 1.6; }
+        .code-card .c { color: #7f93a8; }
+        .button.is-disabled-link { opacity: 0.55; cursor: default; pointer-events: none; }
+        @media screen and (max-width: 768px) {
+            .radar-grid { grid-template-columns: 1fr; }
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <!-- ==================== HERO ==================== -->
+    <section class="hero">
+        <div class="hero-body" style="padding-bottom: 1rem;">
+            <div class="container is-max-desktop">
+                <div class="columns is-centered">
+                    <div class="column has-text-centered">
+                        <h1 class="title is-1 publication-title">
+                            <span style="font-size: xx-large;">
+                                ExpHarness: Model-Agnostic Experience Learning through a Trainable Harness
+                            </span>
+                        </h1>
+
+                        <div class="is-size-5 publication-authors author-list">
+<span class="author-block">Tao Feng<sup>1</sup></span>
+<span class="author-block">Chongrui Ye<sup>1</sup></span>
+<span class="author-block">Fangxu Yu<sup>2</sup></span>
+<span class="author-block">Tianyang Luo<sup>1</sup></span>
+<span class="author-block">Jingjun Xu<sup>3</sup></span>
+<span class="author-block">Xueqiang Xu<sup>1</sup></span>
+<span class="author-block">Haozhen Zhang<sup>4</sup></span>
+<span class="author-block">Weizhi Zhang<sup>5</sup></span>
+<span class="author-block">Zijie Lei<sup>6</sup></span>
+<span class="author-block">Zhigang Hua<sup>6</sup></span>
+<span class="author-block">Yan Xie<sup>6</sup></span>
+<span class="author-block">Shuang Yang<sup>6</sup></span>
+<span class="author-block">Jiaxuan You<sup>1</sup></span>
+                        </div>
+
+                        <div class="publication-authors" style="margin-top: 0.4rem; font-size: 0.95rem; color: #666;">
+                            <sup>1</sup>University of Illinois Urbana-Champaign &nbsp; <sup>2</sup>University of Maryland &nbsp; <sup>3</sup>Harvard University<br><sup>4</sup>Nanyang Technological University &nbsp; <sup>5</sup>University of Illinois Chicago &nbsp; <sup>6</sup>Meta Monetization AI
+                        </div>
+
+                        <div class="has-text-centered" style="margin-top: 0.9rem;">
+                            <div class="publication-links">
+                                <span class="link-block">
+                                    <a class="external-link button is-normal is-rounded is-dark is-disabled-link" title="Coming soon">
+                                        <span class="icon"><i class="ai ai-arxiv"></i></span>
+                                        <span>Paper (coming soon)</span>
+                                    </a>
+                                </span>
+                                <span class="link-block">
+                                    <a href="https://github.com/ulab-uiuc/ExpHarness" class="external-link button is-normal is-rounded is-dark" target="_blank" rel="noopener noreferrer">
+                                        <span class="icon"><i class="fab fa-github"></i></span>
+                                        <span>Code &amp; Data</span>
+                                    </a>
+                                </span>
+                                <span class="link-block">
+                                    <a href="#BibTeX" class="external-link button is-normal is-rounded is-dark">
+                                        <span class="icon"><i class="fas fa-quote-right"></i></span>
+                                        <span>BibTeX</span>
+                                    </a>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Headline numbers -->
+                        <div class="stat-ribbon">
+                            <div class="stat-cell is-wide">
+                                <div class="dual-row">
+                                    <div class="dual-item">
+                                        <div class="stat-num">+12.1%</div>
+                                        <div class="dual-lbl">Small executor</div>
+                                    </div>
+                                    <div class="dual-item">
+                                        <div class="stat-num">+4.5%</div>
+                                        <div class="dual-lbl">Large executor</div>
+                                    </div>
+                                </div>
+                                <div class="stat-cap">ExpSuite-Static</div>
+                                <div class="stat-foot">Relative gain in weighted average score over the strongest baseline (MemRL) on 10 benchmarks.</div>
+                            </div>
+                            <div class="stat-cell is-wide">
+                                <div class="dual-row">
+                                    <div class="dual-item">
+                                        <div class="stat-num">+21.4%</div>
+                                        <div class="dual-lbl">Small executor</div>
+                                    </div>
+                                    <div class="dual-item">
+                                        <div class="stat-num">+12.7%</div>
+                                        <div class="dual-lbl">Large executor</div>
+                                    </div>
+                                </div>
+                                <div class="stat-cap">ExpSuite-Agentic</div>
+                                <div class="stat-foot">Relative gain in average score over the strongest baseline (S3) on ALFWorld and AppWorld.</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-num">&minus;21.6%</div>
+                                <div class="stat-cap">Interaction Steps</div>
+                                <div class="stat-foot">vs. the most step-efficient baseline (large executor).</div>
+                            </div>
+                            <div class="stat-cell">
+                                <div class="stat-num">0</div>
+                                <div class="stat-cap">Executor Updates</div>
+                                <div class="stat-foot">The executor stays frozen; only the harness learns.</div>
+                            </div>
+                        </div>
+
+                        <p class="stat-legend">
+                            <i class="fas fa-circle-info" style="color:#3273dc; margin-right:0.3rem;"></i>
+                            <strong>Small / large executors.</strong> ExpSuite-Static: Llama-3.2-3B-Instruct / Llama-3.1-8B-Instruct.
+                            ExpSuite-Agentic: Qwen3-32B / Gemini-3.1-Flash-Lite. Gains are relative improvements
+                            (S<sub>ours</sub> &minus; S<sub>baseline</sub>) / S<sub>baseline</sub> of the averaged score.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== STICKY SECTION NAV ==================== -->
+    <nav class="section-nav">
+        <div class="nav-inner">
+            <a href="#overview">Overview</a>
+            <a href="#method">Method</a>
+            <a href="#expsuite">ExpSuite</a>
+            <a href="#results">Results</a>
+            <a href="#transfer">Transfer</a>
+            <a href="#ablation">Ablation</a>
+            <a href="#code">Code</a>
+            <a href="#BibTeX">BibTeX</a>
+        </div>
+    </nav>
+
+    <!-- ==================== OVERVIEW ==================== -->
+    <section class="section" id="overview" style="padding-top: 2.5rem;">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <p class="eyebrow">Overview</p>
+                    <h2 class="title is-3">Let the Harness Learn, Keep the Executor Frozen</h2>
+                    <div class="content has-text-justified" style="margin-top: 1rem;">
+                        <p>
+                            LLM agents increasingly operate within a <strong>harness</strong>&mdash;the scaffolding that determines
+                            what enters the executor's context&mdash;yet the experience they accumulate across tasks rarely flows back
+                            into this harness. Fine-tuning the executor on collected experience ties what was learned to one model,
+                            and has to be repeated whenever a stronger or more suitable executor appears.
+                        </p>
+                        <p>
+                            <strong>ExpHarness</strong> is a learnable experience harness that improves <strong>frozen and replaceable</strong>
+                            LLM executors without modifying their parameters. It distills trajectories into reusable <em>skills</em> and
+                            failure <em>lessons</em> within a self-evolving experience graph, and trains a lightweight retrieval copilot
+                            that decides, per task, how broadly to explore the graph and how strongly to favor historically useful
+                            experiences over merely similar ones. The copilot is optimized with reinforcement learning from a
+                            utility-grounded reward, and the same reward updates the graph during training.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pillar-grid">
+                <div class="pillar-card">
+                    <div class="pillar-icon"><i class="fas fa-diagram-project"></i></div>
+                    <div class="pillar-title">Self-Evolving Experience Graph</div>
+                    <p class="pillar-text">
+                        Successful trajectories become skills, failed ones become lessons. Each entry stores its text, embedding,
+                        a utility estimate and a retrieval count, and is linked to its semantically similar neighbors.
+                    </p>
+                </div>
+                <div class="pillar-card">
+                    <div class="pillar-icon"><i class="fas fa-sliders"></i></div>
+                    <div class="pillar-title">Trainable Retrieval Copilot</div>
+                    <p class="pillar-text">
+                        A small LM (Qwen2.5-3B-Instruct) reads the task and outputs two controls: <strong>R</strong> sets how far
+                        graph diffusion spreads from the seeds, <strong>W</strong> trades semantic similarity for historical utility.
+                        It never answers the task itself.
+                    </p>
+                </div>
+                <div class="pillar-card">
+                    <div class="pillar-icon"><i class="fas fa-arrows-rotate"></i></div>
+                    <div class="pillar-title">Utility-Grounded Co-Evolution</div>
+                    <p class="pillar-text">
+                        The executor is run with and without the retrieved experiences. The score gain plus the absolute score
+                        trains the copilot with PPO and updates the utility of every retrieved node.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== METHOD ==================== -->
+    <section class="section" id="method" style="background-color: #fafafa;">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <p class="eyebrow">Method</p>
+                    <h2 class="title is-3">Copilot-Controlled, Utility-Guided Retrieval</h2>
+                </div>
+            </div>
+
+            <figure class="figure-card">
+                <img src="./static/images/framework.png" alt="ExpHarness framework: a retrieval copilot predicts R and W for each task; retrieval on the experience graph runs semantic seeding, personalized-PageRank diffusion and utility-aware ranking; the frozen executor is evaluated with and without memory; the reward updates both the copilot and the graph.">
+                <figcaption>
+                    <strong>Overview of ExpHarness.</strong> For each task, the retrieval copilot predicts <em>R</em> (diffusion
+                    depth) and <em>W</em> (similarity&ndash;utility trade-off). Retrieval on the experience graph runs (a) semantic
+                    seeding, (b) personalized-PageRank diffusion and (c) utility-aware ranking. The frozen executor is evaluated with
+                    and without the retrieved experiences; the resulting reward updates the copilot via PPO and the graph via node
+                    utility updates, new experiences, and pruning. Only the harness evolves; the executor stays frozen.
+                </figcaption>
+            </figure>
+
+            <div class="step-grid">
+                <div class="step-card">
+                    <div class="step-tag">Step (a)</div>
+                    <div class="step-title">Semantic Seeding</div>
+                    <p class="step-text">Embed the task with Contriever and take the top-<em>m</em> most similar experiences as seeds.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-tag">Step (b)</div>
+                    <div class="step-title">Structure-Aware Expansion</div>
+                    <p class="step-text">Personalized PageRank from the seeds. A larger <em>R</em> means a higher restart probability, so retrieval stays local; a smaller <em>R</em> lets it spread across the graph.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-tag">Step (c)</div>
+                    <div class="step-title">Utility-Aware Ranking</div>
+                    <p class="step-text">Rank candidates by (1&minus;&lambda;)&middot;similarity + &lambda;&middot;UCB(utility, count), with &lambda; = <em>W</em>/100, and pass the top-<em>K</em> to the executor.</p>
+                </div>
+            </div>
+
+            <div class="equation">
+                r = ( s<sub>with</sub> &minus; s<sub>without</sub> ) + &eta; &middot; s<sub>with</sub>
+                <span class="eq-note">Utility-grounded reward: the executor's gain from the retrieved experiences plus its absolute score.
+                It trains the copilot (PPO) and updates u<sub>v</sub> &larr; (1&minus;&beta;)u<sub>v</sub> + &beta;r for every retrieved node.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== EXPSUITE ==================== -->
+    <section class="section" id="expsuite">
+        <div class="container is-max-desktop">
+            <p class="eyebrow has-text-centered">Benchmark</p>
+            <h2 class="title is-3 has-text-centered">ExpSuite: 10 Static Benchmarks + 2 Agentic Environments</h2>
+            <div class="columns is-centered" style="margin-bottom: 0.5rem;">
+                <div class="column is-four-fifths">
+                    <div class="content has-text-justified">
+                        <p>
+                            ExpSuite tests whether experience reuse helps both single-turn reasoning and long-horizon interaction.
+                            ExpSuite-Static uses Llama-3.2-3B-Instruct and Llama-3.1-8B-Instruct as executors;
+                            ExpSuite-Agentic uses Qwen3-32B and Gemini-3.1-Flash-Lite. All executors stay frozen and no
+                            manually curated few-shot examples are used.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="domain-grid">
+                <div class="domain-card" style="cursor: default;">
+                    <div class="domain-name">Question Answering <span class="domain-count">5</span></div>
+                    <div class="domain-subs">ARC-C &middot; CommonsenseQA &middot; GPQA-Diamond &middot; MMLU &middot; OBQA<br>Metric: accuracy</div>
+                </div>
+                <div class="domain-card" style="cursor: default;">
+                    <div class="domain-name">Math Reasoning <span class="domain-count">3</span></div>
+                    <div class="domain-subs">GSM8K &middot; GSM-Symbolic &middot; MATH<br>Metric: exact match</div>
+                </div>
+                <div class="domain-card" style="cursor: default;">
+                    <div class="domain-name">Code Generation <span class="domain-count">2</span></div>
+                    <div class="domain-subs">HumanEval+ &middot; MBPP+<br>Metric: Pass@1</div>
+                </div>
+                <div class="domain-card" style="cursor: default;">
+                    <div class="domain-name">ALFWorld <span class="domain-count">2</span></div>
+                    <div class="domain-subs">Seen &middot; Unseen splits<br>Metric: success rate, #steps</div>
+                </div>
+                <div class="domain-card" style="cursor: default;">
+                    <div class="domain-name">AppWorld <span class="domain-count">2</span></div>
+                    <div class="domain-subs">Test-Normal &middot; Test-Challenge<br>Metric: pass rate, #steps</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== MAIN RESULTS ==================== -->
+    <section class="section" id="results" style="background-color: #fafafa;">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <p class="eyebrow">Main Results</p>
+                    <h2 class="title is-3">Highest Weighted Average in Every Evaluated Setting</h2>
+                    <div class="content has-text-justified" style="margin-top: 1rem;">
+                        <p>
+                            We compare against a no-memory executor, retrieval-centric experience learning methods
+                            (ReasoningBank, ExpeL, LightMem, Mem0, AWM, MemRL), LLM-centric methods (IRCoT, Search-o1, S3) and,
+                            for the agentic setting, prompt-based agents (ReAct, Reflexion). All experience-based baselines receive the
+                            same historical trajectories whenever applicable.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="title is-5 has-text-centered" style="margin-top: 0.5rem;">ExpSuite-Static</h3>
+            <div class="gallery-tabs" data-group="static">
+                <button class="gallery-tab active" data-target="static-small">Llama-3.2-3B-Instruct (Small)</button>
+                <button class="gallery-tab" data-target="static-large">Llama-3.1-8B-Instruct (Large)</button>
+            </div>
+            <div class="table-wrap" id="static-small"><table class="results-table static"><thead>
+<tr><th class="name" rowspan="2">Method</th><th class="spans" colspan="5">Question Answering</th>
+<th class="spans group-start" colspan="3">Reasoning</th><th class="spans group-start" colspan="2">Coding</th>
+<th class="group-start" rowspan="2">Weighted<br>Avg.</th></tr>
+<tr><th>ARC-C</th><th>CSQA</th><th>GPQA-D</th><th>MMLU</th><th>OBQA</th>
+<th class="group-start">GSM8K</th><th>GSM-Sym</th><th>MATH</th><th class="group-start">HumanEval+</th><th>MBPP+</th></tr>
+</thead><tbody>
+<tr><td class="name">No Memory</td><td>51.56</td><td>54.44</td><td>18.33</td><td>42.89</td><td>54.22</td><td>69.56</td><td>60.44</td><td>37.56</td><td>43.59</td><td>38.75</td><td>51.88</td></tr>
+<tr class="group-row"><td colspan="12">Retrieval-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">ReasoningBank</td><td>71.78</td><td>61.56</td><td>21.67</td><td>54.00</td><td>72.67</td><td>70.44</td><td>56.44</td><td>45.56</td><td>51.28</td><td>57.50</td><td>60.83</td></tr>
+<tr><td class="name">ExpeL</td><td>44.67</td><td>57.78</td><td>16.67</td><td>46.44</td><td>43.11</td><td>77.11</td><td class="second">80.44</td><td>23.33</td><td>20.51</td><td>22.50</td><td>51.49</td></tr>
+<tr><td class="name">LightMem</td><td>71.56</td><td class="best">64.00</td><td class="second">26.67</td><td class="second">58.00</td><td class="second">72.89</td><td>44.89</td><td>42.00</td><td>49.11</td><td>48.72</td><td>42.50</td><td>56.47</td></tr>
+<tr><td class="name">Mem0</td><td>68.00</td><td>59.56</td><td class="best">28.33</td><td>56.44</td><td>65.78</td><td>52.00</td><td>39.78</td><td>28.22</td><td>41.03</td><td class="second">60.00</td><td>52.42</td></tr>
+<tr><td class="name">AWM</td><td class="second">72.44</td><td>60.44</td><td>15.00</td><td>53.33</td><td>69.33</td><td>55.33</td><td>38.89</td><td>45.78</td><td class="second">53.85</td><td class="second">60.00</td><td>55.81</td></tr>
+<tr><td class="name">MemRL</td><td>67.33</td><td>60.00</td><td>23.33</td><td>40.22</td><td>67.11</td><td class="second">83.78</td><td>68.00</td><td class="second">55.33</td><td>46.15</td><td>57.50</td><td class="second">62.06</td></tr>
+<tr class="group-row"><td colspan="12">LLM-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">IRCoT</td><td>62.67</td><td>59.78</td><td>15.00</td><td>38.00</td><td>63.33</td><td>77.78</td><td>72.67</td><td>29.56</td><td>51.28</td><td>50.00</td><td>56.65</td></tr>
+<tr><td class="name">Search-o1</td><td>66.67</td><td>60.22</td><td class="best">28.33</td><td>50.00</td><td>62.44</td><td>78.44</td><td>73.33</td><td>38.44</td><td>30.77</td><td>28.75</td><td>59.63</td></tr>
+<tr><td class="name">S3</td><td>64.89</td><td>59.11</td><td>23.33</td><td>44.00</td><td>64.00</td><td>82.00</td><td>74.00</td><td>53.11</td><td>48.72</td><td>55.00</td><td>61.94</td></tr>
+<tr class="row-ours"><td class="name">ExpHarness (Ours)</td><td class="best">74.00</td><td class="second">63.11</td><td class="second">26.67</td><td class="best">60.00</td><td class="best">74.00</td><td class="best">84.89</td><td class="best">82.00</td><td class="best">57.11</td><td class="best">56.41</td><td class="best">62.50</td><td class="best">69.57</td></tr>
+</tbody></table></div><div class="table-wrap" id="static-large" hidden><table class="results-table static"><thead>
+<tr><th class="name" rowspan="2">Method</th><th class="spans" colspan="5">Question Answering</th>
+<th class="spans group-start" colspan="3">Reasoning</th><th class="spans group-start" colspan="2">Coding</th>
+<th class="group-start" rowspan="2">Weighted<br>Avg.</th></tr>
+<tr><th>ARC-C</th><th>CSQA</th><th>GPQA-D</th><th>MMLU</th><th>OBQA</th>
+<th class="group-start">GSM8K</th><th>GSM-Sym</th><th>MATH</th><th class="group-start">HumanEval+</th><th>MBPP+</th></tr>
+</thead><tbody>
+<tr><td class="name">No Memory</td><td>70.22</td><td>63.11</td><td>23.33</td><td>53.11</td><td>69.78</td><td>70.89</td><td>62.67</td><td>39.78</td><td>43.59</td><td>58.75</td><td>60.41</td></tr>
+<tr class="group-row"><td colspan="12">Retrieval-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">ReasoningBank</td><td>82.22</td><td>70.44</td><td class="second">28.33</td><td>63.78</td><td>78.44</td><td>80.67</td><td>74.22</td><td>47.56</td><td>58.97</td><td>62.50</td><td>69.93</td></tr>
+<tr><td class="name">ExpeL</td><td>82.67</td><td class="best">75.78</td><td>21.67</td><td>66.67</td><td>82.67</td><td>91.11</td><td class="second">88.89</td><td>45.78</td><td>35.90</td><td>66.25</td><td>74.53</td></tr>
+<tr><td class="name">LightMem</td><td>81.56</td><td>72.22</td><td>23.33</td><td>60.89</td><td>80.89</td><td>81.56</td><td>72.00</td><td>49.11</td><td>51.28</td><td>68.75</td><td>70.02</td></tr>
+<tr><td class="name">Mem0</td><td>83.33</td><td>70.00</td><td>20.00</td><td>67.11</td><td>80.67</td><td>90.67</td><td>86.00</td><td>47.78</td><td class="second">64.10</td><td class="second">77.50</td><td>74.02</td></tr>
+<tr><td class="name">AWM</td><td>81.56</td><td>74.00</td><td>18.33</td><td>60.22</td><td>78.67</td><td>81.78</td><td>76.44</td><td>47.11</td><td class="second">64.10</td><td>76.25</td><td>70.47</td></tr>
+<tr><td class="name">MemRL</td><td class="second">84.44</td><td>73.78</td><td>23.33</td><td class="second">67.56</td><td class="second">84.00</td><td class="second">93.33</td><td>80.00</td><td class="second">56.44</td><td>35.90</td><td>65.00</td><td class="second">75.34</td></tr>
+<tr class="group-row"><td colspan="12">LLM-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">IRCoT</td><td>83.11</td><td class="second">75.33</td><td class="best">30.00</td><td>67.11</td><td>82.22</td><td>88.67</td><td>84.00</td><td>52.00</td><td>48.72</td><td>71.25</td><td>74.80</td></tr>
+<tr><td class="name">Search-o1</td><td>81.33</td><td>71.78</td><td class="second">28.33</td><td>64.44</td><td>78.00</td><td>89.33</td><td>84.67</td><td>48.00</td><td>46.15</td><td>63.75</td><td>72.54</td></tr>
+<tr><td class="name">S3</td><td>82.00</td><td>73.56</td><td>26.67</td><td>65.56</td><td>81.56</td><td>90.89</td><td>86.00</td><td>52.89</td><td>58.97</td><td>72.50</td><td>74.89</td></tr>
+<tr class="row-ours"><td class="name">ExpHarness (Ours)</td><td class="best">86.00</td><td>75.11</td><td class="second">28.33</td><td class="best">68.89</td><td class="best">86.00</td><td class="best">95.11</td><td class="best">90.00</td><td class="best">58.00</td><td class="best">66.67</td><td class="best">78.75</td><td class="best">78.76</td></tr>
+</tbody></table></div>
+            <p class="table-note">
+                Accuracy (QA), exact match (reasoning) and Pass@1 (coding), in %. The weighted average weights each benchmark by its
+                number of test instances. <strong>Bold</strong>: best; <span style="text-decoration: underline;">underline</span>: second best.
+            </p>
+
+            <h3 class="title is-5 has-text-centered" style="margin-top: 2.5rem;">ExpSuite-Agentic</h3>
+            <div class="gallery-tabs" data-group="agentic">
+                <button class="gallery-tab active" data-target="agentic-small">Qwen3-32B (Small)</button>
+                <button class="gallery-tab" data-target="agentic-large">Gemini-3.1-Flash-Lite (Large)</button>
+            </div>
+            <div class="table-wrap" id="agentic-small"><table class="results-table agentic"><thead>
+<tr><th class="name" rowspan="2">Method</th><th class="spans" colspan="2">ALF-Seen</th><th class="spans" colspan="2">ALF-Unseen</th>
+<th class="spans group-start" colspan="2">AppWorld Test-N</th><th class="spans" colspan="2">AppWorld Test-C</th>
+<th class="spans group-start" colspan="2">Average</th></tr>
+<tr><th>SR</th><th>#Steps&darr;</th><th>SR</th><th>#Steps&darr;</th>
+<th class="group-start">PR</th><th>#Steps&darr;</th><th>PR</th><th>#Steps&darr;</th>
+<th class="group-start">Score</th><th>#Steps&darr;</th></tr>
+</thead><tbody>
+<tr><td class="name">No Memory</td><td>19.3</td><td>41.2</td><td>35.8</td><td>42.5</td><td>30.1</td><td>30.8</td><td>21.6</td><td>31.5</td><td>25.1</td><td>34.7</td></tr>
+<tr class="group-row"><td colspan="11">Prompt-based Agentic Baselines</td></tr>
+<tr><td class="name">ReAct</td><td>31.4</td><td>36.7</td><td class="second">47.0</td><td>38.6</td><td>30.0</td><td>32.2</td><td>21.8</td><td>31.9</td><td>28.9</td><td>33.8</td></tr>
+<tr><td class="name">Reflexion</td><td>23.6</td><td>40.6</td><td>40.3</td><td>38.7</td><td>31.6</td><td>31.3</td><td>21.9</td><td>32.7</td><td>26.9</td><td>34.6</td></tr>
+<tr class="group-row"><td colspan="11">Retrieval-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">ReasoningBank</td><td>37.9</td><td>35.3</td><td>26.1</td><td>42.6</td><td>29.4</td><td>25.6</td><td>22.2</td><td>24.3</td><td>26.8</td><td>29.2</td></tr>
+<tr><td class="name">ExpeL</td><td>54.3</td><td>27.5</td><td>29.1</td><td>41.4</td><td>26.7</td><td>35.1</td><td>28.2</td><td>25.6</td><td>32.3</td><td>30.2</td></tr>
+<tr><td class="name">LightMem</td><td>49.2</td><td>29.6</td><td>25.0</td><td>39.2</td><td>28.5</td><td>34.2</td><td>23.7</td><td>37.5</td><td>29.0</td><td>35.8</td></tr>
+<tr><td class="name">Mem0</td><td>30.0</td><td>37.3</td><td>18.7</td><td>42.8</td><td>20.8</td><td>33.4</td><td>15.7</td><td>35.2</td><td>19.5</td><td>36.4</td></tr>
+<tr><td class="name">AWM</td><td>37.9</td><td>35.3</td><td>32.8</td><td>40.1</td><td>28.0</td><td>28.8</td><td>22.8</td><td>33.0</td><td>27.8</td><td>33.7</td></tr>
+<tr><td class="name">MemRL</td><td>25.7</td><td>40.3</td><td>20.2</td><td>49.6</td><td>45.2</td><td>18.6</td><td>28.9</td><td>24.7</td><td>30.2</td><td>29.9</td></tr>
+<tr class="group-row"><td colspan="11">LLM-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">IRCoT</td><td>33.6</td><td>37.9</td><td>27.6</td><td>40.6</td><td>52.8</td><td>11.4</td><td class="second">36.1</td><td>17.8</td><td>37.6</td><td>23.4</td></tr>
+<tr><td class="name">Search-o1</td><td>32.1</td><td>38.0</td><td>11.2</td><td>47.3</td><td>45.4</td><td>16.5</td><td>26.5</td><td class="second">14.2</td><td>28.7</td><td>23.7</td></tr>
+<tr><td class="name">S3</td><td class="second">58.6</td><td class="second">23.5</td><td>42.5</td><td class="second">22.5</td><td class="second">55.4</td><td class="second">9.7</td><td>35.0</td><td>15.0</td><td class="second">44.0</td><td class="second">16.5</td></tr>
+<tr class="row-ours"><td class="name">ExpHarness (Ours)</td><td class="best">70.0</td><td class="best">20.0</td><td class="best">75.4</td><td class="best">18.0</td><td class="best">57.1</td><td class="best">8.8</td><td class="best">39.3</td><td class="best">13.6</td><td class="best">53.4</td><td class="best">14.4</td></tr>
+</tbody></table></div><div class="table-wrap" id="agentic-large" hidden><table class="results-table agentic"><thead>
+<tr><th class="name" rowspan="2">Method</th><th class="spans" colspan="2">ALF-Seen</th><th class="spans" colspan="2">ALF-Unseen</th>
+<th class="spans group-start" colspan="2">AppWorld Test-N</th><th class="spans" colspan="2">AppWorld Test-C</th>
+<th class="spans group-start" colspan="2">Average</th></tr>
+<tr><th>SR</th><th>#Steps&darr;</th><th>SR</th><th>#Steps&darr;</th>
+<th class="group-start">PR</th><th>#Steps&darr;</th><th>PR</th><th>#Steps&darr;</th>
+<th class="group-start">Score</th><th>#Steps&darr;</th></tr>
+</thead><tbody>
+<tr><td class="name">No Memory</td><td>62.7</td><td>27.9</td><td>64.9</td><td>26.3</td><td>34.2</td><td>33.0</td><td>23.2</td><td>36.6</td><td>38.3</td><td>32.9</td></tr>
+<tr class="group-row"><td colspan="11">Prompt-based Agentic Baselines</td></tr>
+<tr><td class="name">ReAct</td><td>65.7</td><td>24.1</td><td>63.4</td><td>25.1</td><td>32.7</td><td>24.8</td><td>32.1</td><td>16.1</td><td>42.6</td><td>20.5</td></tr>
+<tr><td class="name">Reflexion</td><td>63.1</td><td>23.3</td><td>60.4</td><td>23.7</td><td>48.2</td><td>21.9</td><td>31.1</td><td class="second">15.6</td><td>44.2</td><td class="second">19.4</td></tr>
+<tr class="group-row"><td colspan="11">Retrieval-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">ReasoningBank</td><td>67.2</td><td>29.1</td><td>81.3</td><td>24.1</td><td>45.3</td><td>23.1</td><td class="second">41.2</td><td>25.5</td><td>52.5</td><td>25.4</td></tr>
+<tr><td class="name">ExpeL</td><td>71.6</td><td class="second">21.4</td><td>63.4</td><td>28.7</td><td>43.6</td><td>21.1</td><td>29.9</td><td>28.3</td><td>44.6</td><td>25.8</td></tr>
+<tr><td class="name">LightMem</td><td>70.1</td><td>27.8</td><td>70.9</td><td>27.8</td><td>34.2</td><td>31.1</td><td>29.7</td><td>34.2</td><td>43.6</td><td>31.6</td></tr>
+<tr><td class="name">Mem0</td><td>58.2</td><td>30.6</td><td>63.4</td><td>22.4</td><td>32.7</td><td>31.5</td><td>22.9</td><td>34.8</td><td>36.9</td><td>31.5</td></tr>
+<tr><td class="name">AWM</td><td>73.1</td><td>24.7</td><td>80.6</td><td class="second">18.8</td><td>50.7</td><td>20.9</td><td>31.5</td><td>25.8</td><td>49.7</td><td>23.6</td></tr>
+<tr><td class="name">MemRL</td><td>61.9</td><td>28.9</td><td>71.6</td><td>26.1</td><td>40.5</td><td class="second">13.5</td><td>31.7</td><td>16.7</td><td>44.6</td><td>19.5</td></tr>
+<tr class="group-row"><td colspan="11">LLM-Centric Experience Learning Baselines</td></tr>
+<tr><td class="name">IRCoT</td><td>75.4</td><td>27.0</td><td class="second">87.3</td><td>19.6</td><td>46.9</td><td>18.7</td><td>34.9</td><td>25.4</td><td>52.0</td><td>23.4</td></tr>
+<tr><td class="name">Search-o1</td><td>76.1</td><td>22.4</td><td>79.4</td><td>23.5</td><td>52.3</td><td>20.7</td><td>39.8</td><td>24.6</td><td>54.3</td><td>23.3</td></tr>
+<tr><td class="name">S3</td><td class="second">77.1</td><td>21.8</td><td>80.6</td><td>21.5</td><td class="second">53.0</td><td>18.5</td><td>40.8</td><td>22.0</td><td class="second">55.3</td><td>21.1</td></tr>
+<tr class="row-ours"><td class="name">ExpHarness (Ours)</td><td class="best">85.0</td><td class="best">17.6</td><td class="best">88.1</td><td class="best">17.0</td><td class="best">57.1</td><td class="best">12.8</td><td class="best">48.4</td><td class="best">14.8</td><td class="best">62.3</td><td class="best">15.2</td></tr>
+</tbody></table></div>
+            <p class="table-note">
+                Success rate (SR) on ALFWorld and pass rate (PR) on AppWorld, in %, with the average number of environment
+                interaction steps (lower is better). The average is weighted across all test tasks.
+            </p>
+
+            <div class="columns is-centered">
+                <div class="column is-four-fifths">
+                    <div class="takeaway">
+                        <span class="takeaway-icon"><i class="fas fa-circle-check"></i></span>
+                        <p>
+                            ExpHarness improves the weighted average over the strongest baseline by <strong>12.1% / 4.5%</strong> on
+                            ExpSuite-Static (vs. MemRL) and by <strong>21.4% / 12.7%</strong> on ExpSuite-Agentic (vs. S3) with the
+                            small / large executor, while using <strong>12.7% / 21.6%</strong> fewer interaction steps than the most
+                            step-efficient baselines. Gains are larger for the smaller executors and for the interactive tasks.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TRANSFER ==================== -->
+    <section class="section" id="transfer">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <p class="eyebrow">Transfer</p>
+                    <h2 class="title is-3">The Learned Harness Transfers Across Executors</h2>
+                    <div class="content has-text-justified" style="margin-top: 1rem;">
+                        <p>
+                            Because all learning resides in the harness, a harness trained with one executor can be reused when the
+                            executor is replaced. We transfer the experience graph only, the copilot only, or both, and compare with
+                            ExpHarness trained directly on the target executor. For the reasoning setting we transfer from
+                            Llama-3.1-8B-Instruct to DeepSeek-R1-Distill-Llama-8B (static) and from Gemini-3.1-Flash-Lite to
+                            Claude-Sonnet-4 (agentic).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <figure class="figure-card">
+                <div class="radar-grid">
+                    <figure>
+                        <img src="./static/images/small_to_large_radar.png" alt="Radar chart: small-to-large executor transfer">
+                        <div class="sub-cap">(a) Small &rarr; large</div>
+                    </figure>
+                    <figure>
+                        <img src="./static/images/large_to_small_radar.png" alt="Radar chart: large-to-small executor transfer">
+                        <div class="sub-cap">(b) Large &rarr; small</div>
+                    </figure>
+                    <figure>
+                        <img src="./static/images/non_reasoning_to_reasoning_radar.png" alt="Radar chart: non-reasoning-to-reasoning executor transfer">
+                        <div class="sub-cap">(c) Non-reasoning &rarr; reasoning</div>
+                    </figure>
+                </div>
+                <figcaption>
+                    <strong>Harness transfer across executor shifts.</strong> Graph+Copilot transfer (the full harness) is closest to
+                    target-specific training in the small-to-large and non-reasoning-to-reasoning settings and is the best transfer
+                    variant in most domains for large-to-small transfer, where a gap to target-specific training remains.
+                    Panels use different axis ranges.
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- ==================== ABLATION ==================== -->
+    <section class="section" id="ablation" style="background-color: #fafafa;">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <p class="eyebrow">Ablation</p>
+                    <h2 class="title is-3">Every Retrieval Design Choice Contributes</h2>
+                    <div class="content has-text-justified" style="margin-top: 1rem;">
+                        <p>
+                            We ablate four experience-retrieval design choices across QA, Reasoning, Coding, ALFWorld and AppWorld:
+                            <strong>w/o Similarity Filtering</strong> (no near-duplicate filtering at insertion),
+                            <strong>Flat Experience</strong> (a flat pool retrieved purely by similarity),
+                            <strong>w/o Graph Diffusion</strong> (retrieve only from the semantic seeds) and
+                            <strong>w/o Utility Ranking</strong> (rank by similarity only). Every variant falls below the full method.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <figure class="figure-card">
+                <img src="./static/images/ablation_bar.png" alt="Bar chart of ExpHarness versus four ablation variants across QA, Reasoning, Coding, ALFWorld and AppWorld">
+                <figcaption>
+                    <strong>Performance under four ablation settings.</strong> Flat Experience shows the largest drop (it changes
+                    both candidate generation and ranking); removing graph diffusion or utility ranking also lowers scores, while
+                    removing similarity filtering causes a smaller decline.
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- ==================== CODE ==================== -->
+    <section class="section" id="code">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <p class="eyebrow">Code &amp; Data</p>
+                    <h2 class="title is-3">Get Started</h2>
+                    <div class="content has-text-justified" style="margin-top: 1rem;">
+                        <p>
+                            The release contains the experience graph server, the copilot PPO trainer (built on verl), executors for
+                            ALFWorld, AppWorld and the static benchmarks, processed data splits and the cold-start experience graphs.
+                            Executors are plain API calls (Gemini, NVIDIA NIM, any OpenAI-compatible endpoint such as vLLM, or Claude).
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="code-card">
+<pre><span class="c"># install</span>
+git clone https://github.com/ulab-uiuc/ExpHarness &amp;&amp; cd ExpHarness
+pip install torch==2.4.0 vllm==0.6.3 &amp;&amp; pip install -r requirements.txt
+
+<span class="c"># train the retrieval copilot (the executor stays frozen)</span>
+bash run/alfworld/train.sh
+bash run/appworld/start_servers.sh &amp;&amp; bash run/appworld/train.sh
+bash run/static/train.sh all            <span class="c"># all | reasoning | coding</span>
+
+<span class="c"># evaluate a checkpoint together with its evolved graph</span>
+bash run/alfworld/eval.sh checkpoints/expharness_alfworld_42 300</pre>
+            </div>
+            <div class="has-text-centered" style="margin-top: 1.25rem;">
+                <a href="https://github.com/ulab-uiuc/ExpHarness" class="button is-normal is-rounded is-light" target="_blank" rel="noopener noreferrer">
+                    <span class="icon"><i class="fab fa-github"></i></span><span>ulab-uiuc/ExpHarness</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== BIBTEX ==================== -->
+    <section class="section" id="BibTeX">
+        <div class="container is-max-desktop content">
+            <h2 class="title">BibTeX</h2>
+            <pre><code>@article{feng2026expharness,
+  title  = {ExpHarness: Model-Agnostic Experience Learning through a Trainable Harness},
+  author = {Feng, Tao and Ye, Chongrui and Yu, Fangxu and Luo, Tianyang and Xu, Jingjun and Xu, Xueqiang and Zhang, Haozhen and Zhang, Weizhi and Lei, Zijie and Hua, Zhigang and Xie, Yan and Yang, Shuang and You, Jiaxuan},
+  year   = {2026}
+}</code></pre>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="content has-text-centered">
+                <p>
+                    Website template adapted from <a href="https://scientist-two.github.io/" target="_blank">ScientistTwo</a>
+                    and <a href="https://nerfies.github.io/" target="_blank">Nerfies</a>.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    // Executor toggles for the result tables.
+    document.querySelectorAll('.gallery-tabs').forEach(function (group) {
+        group.querySelectorAll('.gallery-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                group.querySelectorAll('.gallery-tab').forEach(function (b) {
+                    b.classList.remove('active');
+                    document.getElementById(b.dataset.target).hidden = true;
+                });
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.target).hidden = false;
+            });
+        });
+    });
+    </script>
+</body>
+
+</html>
