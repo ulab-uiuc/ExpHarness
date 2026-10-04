@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/logo.png" alt="ExpHarness" width="700">
+</div>
+
 <h1 align="center">ExpHarness: Model-Agnostic Experience Learning through a Trainable Harness</h1>
 
 <div align="center">

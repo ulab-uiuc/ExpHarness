@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1620 560" width="1620" height="560">
+  <defs>
+    <style>
+      .ink { stroke: #1f2a37; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+      .thin { stroke: #1f2a37; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <clipPath id="win"><rect x="1056" y="42" width="528" height="460" rx="34"/></clipPath>
+  </defs>
+  <rect width="1620" height="560" fill="#ffffff"/>
+
+  <!-- soft ground shadows -->
+  <ellipse cx="190" cy="520" rx="170" ry="16" fill="#e8f0fd"/>
+  <ellipse cx="760" cy="522" rx="150" ry="16" fill="#e8f0fd"/>
+
+  <!-- ================= person ================= -->
+  <path class="ink" d="M30 500 C30 400 80 335 190 320 C300 335 350 400 350 500 Z" fill="#c9dcfa"/>
+  <path class="thin" d="M135 330 L190 395 L245 330" fill="none"/>
+  <path class="thin" d="M110 345 L150 300 L175 330 Z" fill="#e8f0fd"/>
+  <path class="thin" d="M270 345 L230 300 L205 330 Z" fill="#e8f0fd"/>
+  <ellipse class="ink" cx="190" cy="205" rx="106" ry="118" fill="#ffffff"/>
+  <path class="ink" d="M86 175 C74 92 142 44 210 52 C280 60 308 115 294 172 C285 150 262 128 225 128 C200 150 160 158 120 150 C105 152 94 160 86 175 Z" fill="#aeb8c5"/>
+  <circle class="thin" cx="142" cy="222" r="32" fill="#ffffff"/>
+  <circle class="thin" cx="236" cy="222" r="32" fill="#ffffff"/>
+  <line class="thin" x1="174" y1="222" x2="204" y2="222"/>
+  <path class="thin" d="M110 220 L92 218"/>
+  <circle class="thin" cx="84" cy="236" r="15" fill="#ffffff"/>
+
+  <!-- task list -->
+  <rect class="ink" x="290" y="232" width="226" height="250" rx="24" fill="#f4f7fc"/>
+  <g>
+    <circle class="thin" cx="342" cy="295" r="17" fill="#5b9cf2"/>
+    <line x1="380" y1="295" x2="480" y2="295" stroke="#8d97a5" stroke-width="12" stroke-linecap="round"/>
+    <circle class="thin" cx="342" cy="355" r="17" fill="#5b9cf2"/>
+    <line x1="380" y1="355" x2="480" y2="355" stroke="#8d97a5" stroke-width="12" stroke-linecap="round"/>
+    <circle class="thin" cx="342" cy="415" r="17" fill="#5b9cf2"/>
+    <line x1="380" y1="415" x2="480" y2="415" stroke="#8d97a5" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+  <!-- light bulb -->
+  <g transform="translate(410 120)">
+    <line class="thin" x1="0" y1="-110" x2="0" y2="-88"/>
+    <line class="thin" x1="-78" y1="-80" x2="-62" y2="-66"/>
+    <line class="thin" x1="78" y1="-80" x2="62" y2="-66"/>
+    <path class="ink" d="M-48 -12 C-62 -60 -30 -88 0 -88 C30 -88 62 -60 48 -12 C40 8 28 18 26 36 L-26 36 C-28 18 -40 8 -48 -12 Z" fill="#fdf1c7"/>
+    <path class="thin" d="M-14 32 L-14 0 C-14 -14 -2 -14 0 -2 C2 -14 14 -14 14 0 L14 32" fill="none"/>
+    <rect class="thin" x="-26" y="36" width="52" height="18" rx="6" fill="#5b9cf2"/>
+    <path class="thin" d="M-16 54 L-12 68 L12 68 L16 54" fill="#ffffff"/>
+  </g>
+
+  <!-- arrow: person -> robot, carrying an experience graph -->
+  <line class="thin" x1="534" y1="320" x2="606" y2="320"/>
+  <path class="thin" d="M588 300 L610 320 L588 340" fill="none"/>
+  <g transform="translate(570 410)">
+    <line x1="-26" y1="-14" x2="18" y2="-26" stroke="#9cc0f5" stroke-width="5"/>
+    <line x1="-26" y1="-14" x2="-6" y2="22" stroke="#9cc0f5" stroke-width="5"/>
+    <line x1="18" y1="-26" x2="26" y2="16" stroke="#9cc0f5" stroke-width="5"/>
+    <line x1="-6" y1="22" x2="26" y2="16" stroke="#9cc0f5" stroke-width="5"/>
+    <circle class="thin" cx="-26" cy="-14" r="10" fill="#5b9cf2"/>
+    <circle class="thin" cx="18" cy="-26" r="9" fill="#ffffff"/>
+    <circle class="thin" cx="-6" cy="22" r="9" fill="#ffffff"/>
+    <circle class="thin" cx="26" cy="16" r="10" fill="#fdf1c7"/>
+  </g>
+
+  <!-- ================= robot ================= -->
+  <g>
+    <line class="thin" x1="626" y1="68" x2="652" y2="98" stroke="#5b9cf2" style="stroke:#5b9cf2"/>
+    <line class="thin" x1="892" y1="68" x2="866" y2="98" style="stroke:#5b9cf2"/>
+    <line class="ink" x1="759" y1="78" x2="759" y2="112"/>
+    <circle class="ink" cx="759" cy="48" r="28" fill="#7fb0f5"/>
+    <!-- arms -->
+    <path class="ink" d="M650 360 C610 380 605 450 640 470" fill="#f4f7fc"/>
+    <path class="ink" d="M868 360 C908 380 913 450 878 470" fill="#f4f7fc"/>
+    <!-- body -->
+    <path class="ink" d="M640 330 C640 300 670 290 759 290 C848 290 878 300 878 330 L870 450 C866 490 830 505 759 505 C688 505 652 490 648 450 Z" fill="#ffffff"/>
+    <circle class="ink" cx="759" cy="400" r="40" fill="#5b9cf2"/>
+    <!-- ears -->
+    <rect class="ink" x="598" y="188" width="46" height="100" rx="23" fill="#c9dcfa"/>
+    <rect class="ink" x="874" y="188" width="46" height="100" rx="23" fill="#c9dcfa"/>
+    <!-- head -->
+    <rect class="ink" x="626" y="112" width="266" height="200" rx="96" fill="#ffffff"/>
+    <rect class="ink" x="660" y="180" width="198" height="94" rx="47" fill="#1f2a37"/>
+    <rect x="696" y="208" width="20" height="40" rx="10" fill="#9cc0f5"/>
+    <rect x="802" y="208" width="20" height="40" rx="10" fill="#9cc0f5"/>
+  </g>
+
+  <!-- arrows: robot <-> environment -->
+  <line class="thin" x1="934" y1="242" x2="1024" y2="242"/>
+  <path class="thin" d="M1004 222 L1026 242 L1004 262" fill="none"/>
+  <line class="thin" x1="1030" y1="350" x2="900" y2="350"/>
+  <path class="thin" d="M920 330 L898 350 L920 370" fill="none"/>
+
+  <!-- ================= environment ================= -->
+  <rect class="ink" x="1050" y="36" width="540" height="472" rx="40" fill="#f4f7fc"/>
+  <g clip-path="url(#win)">
+  <path d="M1100 175 C1100 145 1125 132 1148 140 C1160 100 1225 95 1242 132 C1272 122 1295 145 1285 175 Z" fill="#c9dcfa"/>
+  <circle class="ink" cx="1498" cy="132" r="46" fill="#fdf1c7"/>
+  <path d="M1150 330 L1240 260 L1300 300 L1395 200 L1580 330 Z" fill="#c9dcfa"/>
+  <rect x="1062" y="320" width="530" height="200" fill="#e8f0fd"/>
+  </g>
+  <!-- tree -->
+  <circle class="thin" cx="1128" cy="260" r="38" fill="#c9dcfa"/>
+  <line class="thin" x1="1128" y1="298" x2="1128" y2="335"/>
+  <!-- cube -->
+  <ellipse cx="1190" cy="462" rx="80" ry="14" fill="#d6e5fb"/>
+  <path class="ink" d="M1118 370 L1176 342 L1244 356 L1244 440 L1196 466 L1118 456 Z" fill="#5b9cf2"/>
+  <path class="ink" d="M1118 370 L1190 382 L1244 356 M1190 382 L1196 466" fill="none"/>
+  <path d="M1124 374 L1188 384 L1240 360 L1178 348 Z" fill="#8fb9f6"/>
+  <!-- path to goal -->
+  <path d="M1268 432 C1310 430 1330 395 1380 382" stroke="#1f2a37" stroke-width="9" stroke-dasharray="16 18" stroke-linecap="round" fill="none"/>
+  <circle class="thin" cx="1422" cy="380" r="24" fill="#5b9cf2"/>
+  <!-- flag + box -->
+  <ellipse cx="1510" cy="442" rx="72" ry="13" fill="#d6e5fb"/>
+  <rect class="ink" x="1466" y="372" width="92" height="66" rx="12" fill="#ffffff"/>
+  <line x1="1468" y1="398" x2="1556" y2="398" stroke="#5b9cf2" stroke-width="8"/>
+  <line class="ink" x1="1512" y1="372" x2="1512" y2="262"/>
+  <path class="ink" d="M1512 262 L1572 292 L1512 316 Z" fill="#5b9cf2"/>
+</svg>
