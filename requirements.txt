@@ -1,0 +1,31 @@
+# ---- Copilot RL training (verl-based PPO) ----
+# Install torch / vllm / flash-attn first (see README), then: pip install -r requirements.txt
+transformers==4.47.1
+ray>=2.10
+hydra-core
+omegaconf
+tensordict<0.6
+codetiming
+accelerate
+datasets
+dill
+pybind11
+pandas
+pyarrow
+numpy<2
+wandb
+
+# ---- Experience graph server ----
+fastapi
+uvicorn
+pydantic
+scipy
+
+# ---- Executor / summarizer API clients ----
+requests
+openai
+anthropic
+
+# ---- ALFWorld ----
+alfworld==0.4.2
+textworld
