@@ -6,6 +6,7 @@
 
 <div align="center">
   <p>
+    <a href="https://ulab-uiuc.github.io/ExpHarness/"><img src="https://img.shields.io/badge/Project-Page-00d9ff?style=for-the-badge&logo=github&logoColor=white" alt="Project Page"></a>
     <a href="#-citation"><img src="https://img.shields.io/badge/Paper-Coming%20Soon-ff6b6b?style=for-the-badge&logo=arxiv&logoColor=white" alt="Paper"></a>
     <a href="https://github.com/ulab-uiuc/ExpHarness/stargazers"><img src="https://img.shields.io/github/stars/ulab-uiuc/ExpHarness?color=f1e05a&style=for-the-badge&logo=star&logoColor=white" alt="Stars"></a>
     <a href="https://github.com/ulab-uiuc/ExpHarness/issues"><img src="https://img.shields.io/github/issues/ulab-uiuc/ExpHarness?color=d73a49&style=for-the-badge&logo=github&logoColor=white" alt="Issues"></a>
@@ -44,11 +45,13 @@ LLM agents run inside a **harness**, the scaffolding that decides what enters th
 
 ## 📰 News
 
+- 🌐 **[2026-10]**: The [project page](https://ulab-uiuc.github.io/ExpHarness/) is online.
 - 🚀 **[2026-10]**: ExpHarness code and data are released.
 
 
 ## 🔗 Links
 
+- 🌐 [Project Page](https://ulab-uiuc.github.io/ExpHarness/)
 - [Overview](#-overview)
 - [Get Started](#-get-started)
 - [Data](#-data)
